@@ -1,0 +1,312 @@
+---
+title: "Likelihood Functions"
+author: "Ishtiaq Mahmud Fahim"
+format: 
+    pdf:
+        toc: true
+editor: visual
+---
+
+\newpage
+
+# Maximum Likelihood Estimation for Different Distributions
+
+## Introduction
+
+This assignment explores the maximum likelihood estimation (MLE) of parameters for several probability distributions: Binomial, Poisson, Exponential, Normal, Gamma, and Beta. The likelihood and log-likelihood functions are derived, and numerical results with visualizations are presented. For the Normal distribution, both parameters are unknown, while for the Gamma and Beta families, one parameter is assumed to be known.
+
+\newpage
+
+# Common Helper Function
+
+A reusable plotting function is quite handy.
+
+```{r, message=FALSE,warning=FALSE}
+
+library(tidyverse)
+
+# General plotting function
+plot_likelihood <- function(x, lik, mle_x, mle_y, xlab, ylab, title) {
+  tibble(x = x, y = lik) %>%
+    ggplot(aes(x, y)) +
+    geom_line() +
+    geom_segment(aes(x = mle_x, xend = mle_x, y = min(y), yend = mle_y), 
+                 col = "red", linewidth = 1) +
+    labs(x = xlab, y = ylab, title = title) +
+    theme_minimal()
+}
+
+```
+
+\newpage
+
+# 1. Binomial Distribution
+
+**Likelihood function:**
+
+$$
+L(p \mid x) = \binom{n}{x} p^{x}(1-p)^{n-x}
+$$
+
+$$
+\ell(p) = x\log p + (n-x)\log(1-p)
+$$
+
+```{r, warning=FALSE, message=FALSE}
+
+# Parameters
+n <- 10; k <- 7
+
+# Likelihood
+binom_lik <- function(p, n, k) {
+  ifelse(p <= 0 || p >= 1, 0, p^k * (1 - p)^(n - k))
+}
+
+p_grid <- seq(0, 1, 0.001)
+lik_vals <- sapply(p_grid, binom_lik, n = n, k = k)
+loglik_vals <- log(lik_vals)
+
+# MLE
+mle_index <- which.max(loglik_vals)
+mle_p <- p_grid[mle_index]
+
+# Plots
+plot_likelihood(p_grid, lik_vals, mle_p, lik_vals[mle_index],
+                "p", "Likelihood", "Binomial Likelihood")
+
+plot_likelihood(p_grid, loglik_vals, mle_p, loglik_vals[mle_index],
+                "p", "Log-Likelihood", "Binomial Log-Likelihood")
+
+
+```
+
+MLE: $\hat{p}$ = `r mle_p`
+
+\newpage
+
+# 2. Poisson Distribution
+
+$$
+L(\lambda \mid x) = \prod_{i=1}^n \frac{e^{-\lambda}\lambda^{x_i}}{x_i!}
+$$
+Taking natural logarithm,
+\newline
+$$
+\quad \ell(\lambda) = -n\lambda + (\sum x_i)\log \lambda
+$$
+\newline
+
+```{r, message=FALSE,warning=FALSE}
+
+# Sample data
+x <- c(2, 3, 4, 2, 1, 3, 2)
+n <- length(x)
+sum_x <- sum(x)
+
+pois_lik <- function(lambda, x){
+  ifelse(lambda <= 0, 0, prod(dpois(x, lambda = lambda)))
+}
+
+lambda_grid <- seq(0, 10, 0.01)
+lik_vals <- sapply(lambda_grid, pois_lik, x = x)
+loglik_vals <- log(lik_vals)
+
+mle_index <- which.max(loglik_vals)
+mle_lambda <- lambda_grid[mle_index]
+
+plot_likelihood(lambda_grid, lik_vals, mle_lambda, lik_vals[mle_index],
+                expression(lambda), 
+                "Likelihood", "Poisson Likelihood")
+
+
+```
+
+\newpage
+
+```{r,warning=FALSE,message=FALSE}
+plot_likelihood(lambda_grid, loglik_vals, mle_lambda, loglik_vals[mle_index],
+                expression(lambda), 
+                "Log-Likelihood", "Poisson Log-Likelihood")
+```
+
+
+MLE: $\hat{\lambda}$ = `r mle_lambda`
+
+\newpage
+
+# 3. Exponential Distribution
+
+$$
+L(\lambda \mid x) = \lambda^n e^{-\lambda \sum x_i}, 
+\quad \ell(\lambda) = n \log \lambda - \lambda \sum x_i
+$$
+
+```{r, message=FALSE,warning=FALSE}
+
+x <- c(2.1, 0.9, 1.5, 0.8, 1.2)
+n <- length(x)
+sum_x <- sum(x)
+
+exp_lik <- function(lambda, x) {
+  ifelse(lambda <= 0, 0, lambda^length(x) * exp(-lambda * sum(x)))
+}
+
+lambda_grid <- seq(0, 5, 0.01)
+lik_vals <- sapply(lambda_grid, exp_lik, x = x)
+loglik_vals <- log(lik_vals)
+
+mle_index <- which.max(loglik_vals)
+mle_lambda <- lambda_grid[mle_index]
+
+plot_likelihood(lambda_grid, lik_vals, mle_lambda, lik_vals[mle_index],
+                expression(lambda), 
+                "Likelihood", "Exponential Likelihood")
+
+plot_likelihood(lambda_grid, loglik_vals, mle_lambda, loglik_vals[mle_index],
+                expression(lambda), 
+                "Log-Likelihood", "Exponential Log-Likelihood")
+
+
+```
+
+MLE: $\hat{\lambda}$ = `r mle_lambda`
+
+\newpage
+
+# 4. Normal Distribution
+
+**Probability density function:**
+
+$$
+f(x \mid \mu, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)
+$$
+
+**Likelihood function:**
+
+$$
+L(\mu, \sigma^2 \mid x) = \prod_{i=1}^n f(x_i \mid \mu, \sigma^2)
+$$
+
+**Log-likelihood function:**
+
+$$
+\ell(\mu, \sigma^2) = -\frac{n}{2}\log(2\pi) - \frac{n}{2}\log(\sigma^2) - \frac{1}{2\sigma^2}\sum_{i=1}^n (x_i - \mu)^2
+$$
+
+
+```{r, message=FALSE, warning=FALSE}
+
+set.seed(123)
+x <- rnorm(50, mean = 5, sd = 2)
+n <- length(x)
+
+# Log-likelihood function
+norm_loglik <- function(mu, sigma2, x) {
+  if (sigma2 <= 0) return(-Inf)
+  -n/2*log(2*pi) - n/2*log(sigma2) - sum((x - mu)^2)/(2*sigma2)
+}
+
+# Parameter grid
+mu_seq <- seq(3, 7, length.out = 50)
+sigma2_seq <- seq(1, 6, length.out = 50)
+
+loglik_matrix <- outer(mu_seq, sigma2_seq, 
+                       Vectorize(function(mu, s2) norm_loglik(mu, s2, x)))
+
+# MLE estimates
+mle_mu <- mean(x)
+mle_sigma2 <- var(x)
+
+# 3D Log-likelihood surface
+persp(mu_seq, sigma2_seq, loglik_matrix,
+      theta = 40, phi = 30,
+      expand = 0.6, col = "lightblue",
+      xlab = expression(mu), ylab = expression(sigma^2), zlab = "Log-Likelihood",
+      main = "Normal Log-Likelihood Surface")
+
+# Add MLE point in red
+points(trans3d(mle_mu, mle_sigma2,
+               norm_loglik(mle_mu, mle_sigma2, x),
+               persp(mu_seq, sigma2_seq, loglik_matrix,
+                     theta = 40, phi = 30, expand = 0.6)),
+       col = "red", pch = 19)
+
+
+```
+
+MLE: $\hat{\mu}$ = `r mle_mu` and $\hat{\sigma^2}$ = `r mle_sigma2`
+
+\newpage
+
+# 5. Gamma Distribution (known shape $k$)
+
+$$
+L(\theta \mid x) = \prod_{i=1}^n \frac{1}{\Gamma(k)\theta^k} x_i^{k-1} e^{-x_i/\theta}
+$$
+
+```{r, warning=FALSE,message=FALSE}
+
+x <- c(2.3, 1.9, 3.1, 2.8, 2.5)
+k <- 2
+n <- length(x)
+
+gamma_lik <- function(theta, x, k){
+  ifelse(theta <= 0, 0,prod(dgamma(x, shape = k, scale = theta)))
+}
+
+theta_grid <- seq(0.1, 5, 0.01)
+lik_vals <- sapply(theta_grid, gamma_lik, x = x, k = k)
+loglik_vals <- log(lik_vals)
+
+mle_index <- which.max(loglik_vals)
+mle_theta <- theta_grid[mle_index]
+
+plot_likelihood(theta_grid, lik_vals, mle_theta, lik_vals[mle_index],
+                expression(theta), 
+                "Likelihood", "Gamma Likelihood")
+
+plot_likelihood(theta_grid, loglik_vals, mle_theta, loglik_vals[mle_index],
+                expression(theta), 
+                "Log-Likelihood", "Gamma Log-Likelihood")
+
+
+```
+
+MLE: $\hat{\theta}$ = `r mle_theta`
+
+\newpage
+
+# 6. Beta Distribution (known $\alpha$)
+
+$$
+L(\beta \mid x) = \prod_{i=1}^n \frac{x_i^{\alpha-1}(1-x_i)^{\beta-1}}{B(\alpha,\beta)}
+$$
+
+```{r, warning=FALSE,message=FALSE}
+
+x <- c(0.2, 0.4, 0.3, 0.5, 0.6)
+alpha <- 2
+n <- length(x)
+
+beta_lik <- function(beta, x, alpha){
+  ifelse(beta <= 0, 0, prod(dbeta(x, shape1 = alpha, shape2 = beta)))
+}
+
+beta_grid <- seq(0.1, 10, 0.01)
+lik_vals <- sapply(beta_grid, beta_lik, x = x, alpha = alpha)
+loglik_vals <- log(lik_vals)
+
+mle_index <- which.max(loglik_vals)
+mle_beta <- beta_grid[mle_index]
+
+plot_likelihood(beta_grid, lik_vals, mle_beta, lik_vals[mle_index],
+                expression(beta), 
+                "Likelihood", "Beta Likelihood")
+
+plot_likelihood(beta_grid, loglik_vals, mle_beta, loglik_vals[mle_index],
+                expression(beta), 
+                "Log-Likelihood", "Beta Log-Likelihood")
+
+```
+
+MLE: $\hat{\beta}$ = `r mle_beta`

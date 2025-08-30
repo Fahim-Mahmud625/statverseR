@@ -1,0 +1,158 @@
+---
+title: "Profile Likelihood"
+author: "Ishtiaq Mahmud Fahim"
+format: 
+      pdf:
+          toc: true 
+editor: visual
+---
+
+\newpage
+
+# Plausibility vs Probability?
+
+## Plausibility:
+
+-   General, non-technical idea: how reasonable or believable something seems given what you know.
+
+-   Not necessarily numerical. Example: “It’s plausible it will rain tomorrow because the sky is cloudy.”
+
+## Probability:
+
+-   A quantitative measure of uncertainty.
+
+-   Defined before observing data: it tells how likely an event is to occur.
+
+-   Example: “The probability of getting heads when tossing a fair coin is 0.5.”
+
+\newpage
+
+# Likelihood
+
+-   A **statistical concept**: the plausibility of different parameter values given the data you already observed.
+
+# Likelihood vs Probability?
+
+**Probability**: Predicts the **chance of outcomes** when the model or **parameters are fixed**.
+
+**Likelihood**: Judges how **plausible parameters** are once **outcomes are observed**.
+
+## Real-life Example
+
+Suppose we toss a coin 10 times and get 7 heads.
+
+**Probability**: If the coin is fair ($p=0.5$), the probability of exactly 7 heads is
+
+$$
+  P(7 \mid p=0.5) = \binom{10}{7}(0.5)^{7}(0.5)^{3}.
+  $$
+
+**Likelihood**: Now that we observed 7 heads, we ask:
+
+*“Which value of $p$ (probability of heads) makes this data most plausible?”*
+
+The likelihood function is
+
+$$
+  L(p \mid 7) \propto p^{7}(1-p)^{3}.
+  $$
+
+This is maximized at $p=0.7$. So 7 heads makes $p=0.7$ the most likely parameter value.
+
+## Summary
+
+**Plausibility** = informal believability.
+
+**Probability** = chance of outcomes given parameters.
+
+**Likelihood** = plausibility of parameters given observed outcomes.
+
+\newpage
+
+# Profile Likelihood
+
+In simple words Profile likelihood shows how well different values of the main parameter fit the data after adjusting the other nuisance parameters in the best possible way.
+
+## Flowchart
+
+1.  **Start** : Write the likelihood (how well parameters fit the data).
+2.  **Pick a value** for the parameter we are interested about.
+3.  **Adjust other parameters** : choose their best values for that fixed choice.
+4.  **Record the fit** : this is the profile likelihood for that value.
+5.  **Repeat for many values** of the main parameter.
+6.  **Result** : get a curve showing which values are most supported by the data.
+
+\newpage
+
+## HW
+
+```{r, warning=F,message=F}
+
+library(tidyverse)
+
+data <- c(
+  39.91, 43.97, 23.19, 38.87, 39.81,
+  22.70, 27.72, 44.67, 28.64, 38.58,
+  37.38, 49.00, 41.48, 41.73, 51.45,
+  35.72, 33.41, 76.60, 32.02, 30.35,
+  38.29, 38.71, 31.39, 39.00, 26.49
+)
+
+
+plik <- function(alph, data){
+  bet <- optim(par = 1,
+               fn = function(b, data){
+                 -sum(dgamma(x = data, shape = alph, scale = b,log = TRUE))
+                 },
+               data = data)$par
+  -sum(dgamma(x = data, shape = alph, scale = bet, log=TRUE))
+}
+
+optim(15, plik, data = data)
+
+```
+
+\newpage
+
+```{r,message=F,warning=F}
+
+m <- seq(10, 50, length.out = 250)
+
+mplik <- NULL
+
+for(i in 1:250){
+  mplik[i] = -plik(m[i], data)
+  }
+
+alph_lik <- m[which.max(mplik)]
+
+alph_lik
+
+```
+
+The profile likelihood for $\alpha$ is $14.7$
+
+\newpage
+
+```{r,warning=FALSE,message=FALSE}
+
+ggplot()+
+  geom_line(
+    aes(
+    x = m, y = mplik
+    )
+  )+
+  theme_bw()+
+  xlab(expression(alpha))+ 
+  ylab(expression(l(alpha)))+
+  geom_segment(
+    aes(
+      x = alph_lik,
+      xend = alph_lik,
+      y = min(mplik),
+      yend = max(mplik)
+    ),
+    col = "red"
+  )
+
+```
